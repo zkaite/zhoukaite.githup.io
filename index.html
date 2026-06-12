@@ -197,10 +197,10 @@
                 <div id="payCodeBox" class="w-44 h-44 bg-gray-100 rounded-lg mx-auto flex items-center justify-center text-gray-400 text-sm">
                     <!-- 弹窗内部：收款区域 -->
                     <div class="p-4 text-center">
-                      <p class="mb-3 text-lg font-bold">解锁高清压缩 一次性付费 29元</p>
+                      <p class="mb-3 text-lg font-bold">解锁高清压缩 一次性付费 9.99元</p>
                       <p class="text-sm text-gray-500 mb-4">扫码付款后联系我获取解锁密码</p>
                       <!-- 收款码图片 -->
-                      <img src="pay.png" class="w-48 h-48 mx-auto">
+                      <img src="pay.jpg" class="w-48 h-48 mx-auto">
                       <div class="mt-4">
                         <button class="px-4 py-2 bg-gray-200 rounded" onclick="closeModal()">关闭</button>
                       </div>
@@ -522,6 +522,14 @@
             const idx = Math.floor(Math.log(bytes) / Math.log(base));
             return (bytes / Math.pow(base, idx)).toFixed(2) + ' ' + unit[idx];
         }
+
+        // 控制弹窗
+    function openModal() {
+      document.getElementById('payModal').style.display = 'block';
+    }
+    function closeModal() {
+      document.getElementById('payModal').style.display = 'none';
+    }
     </script>
 </body>
 </html>
