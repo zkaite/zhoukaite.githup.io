@@ -30,23 +30,25 @@
             .content-auto {
                 content-visibility: auto;
             }
+            /* 拖拽高亮样式 */
             .drag-active {
                 @apply border-primary bg-primary/5 border-2;
             }
+            /* 卡片通用阴影 */
             .card-shadow {
                 @apply shadow-md hover:shadow-lg transition-all duration-300;
             }
+            /* 按钮基础样式 */
             .btn-base {
                 @apply px-4 py-2.5 rounded-lg font-medium transition-all duration-200 active:scale-95 select-none;
             }
+            /* 禁用样式 */
             .btn-disabled {
                 @apply opacity-60 cursor-not-allowed active:scale-100;
             }
+            /* 滑块美化 */
             input[type="range"] {
                 -webkit-appearance: none;
-                background: #e5e7eb;
-                height: 8px;
-                border-radius: 4px;
             }
             input[type="range"]::-webkit-slider-thumb {
                 -webkit-appearance: none;
@@ -55,11 +57,6 @@
                 border-radius: 50%;
                 background: currentColor;
                 cursor: pointer;
-            }
-            /* 禁止页面拖动选中 */
-            body {
-                user-select: none;
-                -webkit-user-select: none;
             }
         }
     </style>
@@ -138,6 +135,7 @@
                             <span>压缩率：<span id="vipRatioText" class="font-bold">80%</span></span>
                             <span>画质更高</span>
                         </div>
+                        <!-- 会员锁定遮罩 -->
                         <div id="vipLockMask" class="absolute inset-0 bg-white/60 backdrop-blur-sm rounded-lg flex items-center justify-center cursor-pointer">
                             <span class="bg-vip text-white text-xs px-3 py-1 rounded-full">点击解锁会员</span>
                         </div>
@@ -149,9 +147,11 @@
                     <button id="compressBtn" class="btn-base bg-primary text-white hover:bg-primary/90 w-full">
                         开始批量压缩
                     </button>
+                    <!-- 普通批量下载（免费） -->
                     <button id="batchNormalDownload" class="btn-base bg-gray-600 text-white hover:bg-gray-700 w-full">
                         批量下载（普通版）
                     </button>
+                    <!-- 会员批量高清下载 -->
                     <button id="batchDownloadBtn" class="btn-base bg-vip text-white hover:bg-vip/90 w-full relative">
                         批量高清下载
                         <span id="downloadLockIcon" class="absolute right-3 top-1/2 -translate-y-1/2">🔒</span>
@@ -170,6 +170,7 @@
 
         <!-- 图片预览 & 压缩信息列表 -->
         <div id="previewBox" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 hidden">
+            <!-- 预览项由JS动态生成 -->
         </div>
     </div>
 
@@ -190,14 +191,11 @@
                         <li class="flex items-center gap-2">✅ 多图一键批量高清下载</li>
                         <li class="flex items-center gap-2">✅ 全功能无使用次数限制</li>
                         <li class="flex items-center gap-2">✅ 优先体验工具新版功能</li>
-                        <li class="flex items-center gap-2">✅ 解锁高清压缩 一次性付费 9.99元</li>
                     </ul>
                 </div>
-                <div id="payCodeBox" class="w-full rounded-lg mx-auto text-center">
-                    <div class="p-4 text-center">
-                        <img src="pay.jpg" class="w-48 h-48 mx-auto mb-4" alt="收款码">
-                        <input id="vipPwd" type="text" placeholder="请输入解锁密码" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 outline-none focus:border-primary">
-                    </div>
+                <!-- 收款码预留区域 -->
+                <div id="payCodeBox" class="w-44 h-44 bg-gray-100 rounded-lg mx-auto flex items-center justify-center text-gray-400 text-sm">
+                    <img src="pay.jpg" class="w-48 h-48 mx-auto mb-4" alt="收款码">
                 </div>
             </div>
             <div class="p-5 bg-gray-50">
@@ -210,15 +208,12 @@
 
     <script>
         // 全局变量
-        let uploadFiles = [];
-        let compressFiles = [];
-        let isVip = false;
-        let isCompressing = false; // 压缩中锁定按钮
-        const MAX_SIZE = 1920;
-        const MAX_FILE_SIZE = 20 * 1024 * 1024; // 单图最大20MB
-        const VIP_PASSWORD = "123456";
+        let uploadFiles = [];    // 已上传图片文件列表
+        let compressFiles = [];  // 压缩后图片文件列表
+        const isVip = false;     // 会员状态：默认非会员
+        const MAX_SIZE = 1920;   // 图片最大宽高限制
 
-        // DOM
+        // 获取DOM元素
         const uploadBox = document.getElementById('uploadBox');
         const fileInput = document.getElementById('fileInput');
         const previewBox = document.getElementById('previewBox');
@@ -238,81 +233,85 @@
         const closeModal = document.getElementById('closeModal');
         const confirmVipBtn = document.getElementById('confirmVipBtn');
         const formatRadios = document.querySelectorAll('input[name="imgFormat"]');
-        const vipPwd = document.getElementById('vipPwd');
+
+        // ===================== 事件监听 =====================
+        // 点击上传框唤起文件选择
+        uploadBox.addEventListener('click', () => fileInput.click());
+
+        // 选择文件上传
+        fileInput.addEventListener('change', handleFileUpload);
+
+        // 拖拽上传相关事件
+        uploadBox.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadBox.classList.add('drag-active');
+        });
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('drag-active');
+        });
+        uploadBox.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadBox.classList.remove('drag-active');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileUpload(e);
+            }
+        });
+
+        // 压缩比例文字实时更新
+        freeRatio.addEventListener('input', () => {
+            freeRatioText.innerText = Math.round(freeRatio.value * 100) + '%';
+        });
+        vipRatio.addEventListener('input', () => {
+            vipRatioText.innerText = Math.round(vipRatio.value * 100) + '%';
+        });
+
+        // 会员功能弹窗触发
+        vipLockMask.addEventListener('click', openVipModal);
+        batchDownloadBtn.addEventListener('click', () => {
+            if (!isVip) openVipModal();
+        });
 
         // 关闭弹窗
-        function closeModal() {
-            modalContent.classList.remove('scale-100', 'opacity-100');
-            modalContent.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                vipModal.classList.add('hidden');
-                vipPwd.value = '';
-            }, 300);
-        }
-        
-        // 打开会员弹窗
-        function openVipModal() {
-            vipModal.classList.remove('hidden');
-            setTimeout(() => {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
-                vipPwd.focus();
-            }, 10);
-        }
+        closeModal.addEventListener('click', closeVipModal);
+        vipModal.addEventListener('click', e => {
+            if (e.target === vipModal) closeVipModal();
+        });
 
-        // 密码校验
-        function checkVipPwd() {
-            const pwd = vipPwd.value.trim();
-            if (!pwd) {
-                alert('请输入解锁密码！');
-                return;
-            }
-            if (pwd !== VIP_PASSWORD) {
-                alert('密码错误，请重新输入！');
-                vipPwd.value = '';
-                vipPwd.focus();
-                return;
-            }
-            isVip = true;
-            vipRatio.disabled = false;
-            vipLockMask.style.display = 'none';
-            downloadLockIcon.style.display = 'none';
-            closeModal();
-            alert('会员解锁成功！已启用高清压缩与批量高清下载');
-        }
+        // 功能按钮
+        compressBtn.addEventListener('click', startCompress);
+        resetBtn.addEventListener('click', resetParams);
+        clearBtn.addEventListener('click', clearAllRecord);
+        confirmVipBtn.addEventListener('click', () => alert('会员开通接口预留，可对接支付功能'));
+        // 免费批量下载
+        batchNormalDownload.addEventListener('click', batchDownloadAll);
 
-        // 文件大小格式化
-        function getFileSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const base = 1024;
-            const unit = ['B', 'KB', 'MB', 'GB'];
-            const idx = Math.floor(Math.log(bytes) / Math.log(base));
-            return (bytes / Math.pow(base, idx)).toFixed(2) + ' ' + unit[idx];
-        }
-
-        // 处理上传
+        // ===================== 核心功能函数 =====================
+        /**
+         * 处理图片上传（点击/拖拽共用）
+         */
         function handleFileUpload(e) {
             const files = e.target.files || e.dataTransfer.files;
-            if (!files || files.length === 0) return;
+            if (!files.length) return;
 
-            const imageList = Array.from(files).filter(file => {
-                const isImg = file.type.startsWith('image/');
-                const isSizeOk = file.size <= MAX_FILE_SIZE;
-                if (!isImg) alert(`文件 ${file.name} 不是图片，已过滤`);
-                if (!isSizeOk) alert(`文件 ${file.name} 超过20MB，已过滤`);
-                return isImg && isSizeOk;
-            });
+            const imageList = Array.from(files).filter(file => file.type.startsWith('image/'));
+            if (imageList.length === 0) {
+                alert('请上传图片格式文件！');
+                return;
+            }
 
-            if (imageList.length === 0) return;
-
+            // 去重存入列表
             imageList.forEach(file => {
                 const exist = uploadFiles.some(item => item.name === file.name && item.size === file.size);
                 if (!exist) uploadFiles.push(file);
             });
+
             renderPreview();
         }
 
-        // 渲染预览
+        /**
+         * 渲染图片预览、大小、状态
+         */
         function renderPreview() {
             previewBox.classList.remove('hidden');
             previewBox.innerHTML = '';
@@ -323,7 +322,7 @@
                 item.className = 'bg-white rounded-xl p-3 card-shadow';
                 item.innerHTML = `
                     <div class="aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
-                        <img src="${URL.createObjectURL(file)}" class="w-full h-full object-contain" alt="预览图" loading="lazy">
+                        <img src="${URL.createObjectURL(file)}" class="w-full h-full object-contain" alt="预览图">
                     </div>
                     <p class="text-sm font-medium text-gray-800 truncate" title="${file.name}">${file.name}</p>
                     <div class="text-xs text-gray-500 mt-1 space-y-1">
@@ -339,6 +338,7 @@
                 previewBox.appendChild(item);
             });
 
+            // 绑定单张下载事件
             document.querySelectorAll('.download-btn').forEach(btn => {
                 btn.addEventListener('click', e => {
                     downloadSingle(e.target.dataset.index);
@@ -346,59 +346,17 @@
             });
         }
 
-        // 图片压缩核心
-        function compressImage(file, quality, outType) {
-            return new Promise((resolve) => {
-                try {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onerror = () => resolve(file);
-                    reader.onload = function (e) {
-                        const img = new Image();
-                        img.src = e.target.result;
-                        img.onerror = () => resolve(file);
-                        img.onload = function () {
-                            let w = img.width;
-                            let h = img.height;
-                            if (w > MAX_SIZE || h > MAX_SIZE) {
-                                const scale = Math.min(MAX_SIZE / w, MAX_SIZE / h);
-                                w = Math.round(w * scale);
-                                h = Math.round(h * scale);
-                            }
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            canvas.width = w;
-                            canvas.height = h;
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(0, 0, w, h);
-                            ctx.drawImage(img, 0, 0, w, h);
-
-                            canvas.toBlob(blob => {
-                                let newName = isVip ? `高清_${file.name}` : file.name;
-                                const newFile = new File([blob], newName, { type: outType });
-                                resolve(newFile.size > file.size ? file : newFile);
-                            }, outType, quality);
-                        }
-                    }
-                } catch (err) {
-                    resolve(file);
-                }
-            });
-        }
-
-        // 开始批量压缩
+        /**
+         * 批量开始压缩（免费档位）
+         */
         async function startCompress() {
             if (uploadFiles.length === 0) {
                 alert('请先上传图片！');
                 return;
             }
-            if (isCompressing) return;
-            isCompressing = true;
-            compressBtn.textContent = '压缩中...';
-            compressBtn.classList.add('btn-disabled');
             compressFiles = [];
-
-            const quality = isVip ? parseFloat(vipRatio.value) : parseFloat(freeRatio.value);
+            const quality = parseFloat(freeRatio.value);
+            // 获取选中的输出格式
             let outputType = 'image/jpeg';
             formatRadios.forEach(radio => {
                 if (radio.checked) outputType = radio.value;
@@ -414,19 +372,67 @@
                 const infoDom = document.getElementById(`compressInfo${i}`);
 
                 if (compressed.size > file.size) {
-                    infoDom.innerHTML = `压缩后：<span class="text-neutral">${afterSize}</span><br>压缩率：<span class="text-danger">${reduceRate}%（体积变大，保留原图）</span>`;
+                    infoDom.innerHTML = `
+                        压缩后：<span class="text-neutral">${afterSize}</span>
+                        <br>压缩率：<span class="text-danger">${reduceRate}%（体积变大，已保留原图）</span>
+                    `;
                 } else {
-                    infoDom.innerHTML = `压缩后：<span class="text-free">${afterSize}</span><br>压缩率：<span class="text-primary">${reduceRate}%</span>`;
+                    infoDom.innerHTML = `
+                        压缩后：<span class="text-free">${afterSize}</span>
+                        <br>压缩率：<span class="text-primary">${reduceRate}%</span>
+                    `;
                 }
                 document.getElementById(`downloadBtn${i}`).classList.remove('hidden');
             }
-
-            isCompressing = false;
-            compressBtn.textContent = '开始批量压缩';
-            compressBtn.classList.remove('btn-disabled');
         }
 
-        // 单张下载
+        /**
+         * 图片压缩核心方法（修复反向压缩 + 格式自定义 + 尺寸限制）
+         * @param {File} file 原文件
+         * @param {Number} quality 压缩质量
+         * @param {String} outType 输出mime类型
+         * @returns {Promise<File>}
+         */
+        function compressImage(file, quality, outType) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        // 等比例限制最大尺寸
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > MAX_SIZE || h > MAX_SIZE) {
+                            const scale = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+                            w = Math.round(w * scale);
+                            h = Math.round(h * scale);
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = w;
+                        canvas.height = h;
+
+                        // 透明区域填充白色
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        canvas.toBlob(blob => {
+                            const newFile = new File([blob], file.name, { type: outType });
+                            // 压缩后体积更大则返回原图
+                            resolve(newFile.size > file.size ? file : newFile);
+                        }, outType, quality);
+                    };
+                };
+            });
+        }
+
+        /**
+         * 单张图片下载
+         */
         function downloadSingle(index) {
             const file = compressFiles[index];
             if (!file) return;
@@ -438,38 +444,35 @@
             document.body.removeChild(a);
         }
 
-        // 普通批量下载
+        /**
+         * 批量下载所有压缩图片（免费通用版）
+         * 注：浏览器原生不支持直接打包zip，依次逐个下载
+         */
         function batchDownloadAll() {
             if (compressFiles.length === 0) {
                 alert('请先完成图片压缩！');
                 return;
             }
             compressFiles.forEach((file, idx) => {
-                setTimeout(() => downloadSingle(idx), idx * 300);
+                setTimeout(() => downloadSingle(idx), idx * 200);
             });
         }
 
-        // 高清批量下载
-        function batchHDownloadAll() {
-            if (compressFiles.length === 0) {
-                alert('请先完成图片压缩！');
-                return;
-            }
-            compressFiles.forEach((file, idx) => {
-                setTimeout(() => downloadSingle(idx), idx * 300);
-            });
-        }
-
-        // 重置参数
+        /**
+         * 重置参数
+         */
         function resetParams() {
             freeRatio.value = 0.4;
             freeRatioText.innerText = '40%';
             vipRatio.value = 0.8;
             vipRatioText.innerText = '80%';
+            // 默认选中JPG
             formatRadios[0].checked = true;
         }
 
-        // 清空记录
+        /**
+         * 清空所有记录
+         */
         function clearAllRecord() {
             uploadFiles = [];
             compressFiles = [];
@@ -478,56 +481,38 @@
             fileInput.value = '';
         }
 
-        // ========== 事件绑定 ==========
-        uploadBox.addEventListener('click', () => fileInput.click());
+        /**
+         * 打开会员弹窗
+         */
+        function openVipModal() {
+            vipModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
 
-        // 拖拽
-        uploadBox.addEventListener('dragover', e => {
-            e.preventDefault();
-            uploadBox.classList.add('drag-active');
-        });
-        uploadBox.addEventListener('dragleave', () => {
-            uploadBox.classList.remove('drag-active');
-        });
-        uploadBox.addEventListener('drop', e => {
-            e.preventDefault();
-            uploadBox.classList.remove('drag-active');
-            if (e.dataTransfer.files.length) {
-                handleFileUpload(e);
-            }
-        });
+        /**
+         * 关闭会员弹窗
+         */
+        function closeVipModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                vipModal.classList.add('hidden');
+            }, 300);
+        }
 
-        // 滑块文字同步
-        freeRatio.addEventListener('input', () => {
-            freeRatioText.innerText = Math.round(freeRatio.value * 100) + '%';
-        });
-        vipRatio.addEventListener('input', () => {
-            vipRatioText.innerText = Math.round(vipRatio.value * 100) + '%';
-        });
-
-        // 会员入口
-        vipLockMask.addEventListener('click', openVipModal);
-        batchDownloadBtn.addEventListener('click', () => {
-            isVip ? batchHDownloadAll() : openVipModal();
-        });
-
-        // 弹窗关闭
-        closeModal.addEventListener('click', closeModal);
-        vipModal.addEventListener('click', e => {
-            if (e.target === vipModal) closeModal();
-        });
-
-        // 密码回车提交
-        vipPwd.addEventListener('keydown', e => {
-            if (e.key === 'Enter') checkVipPwd();
-        });
-
-        // 功能按钮
-        compressBtn.addEventListener('click', startCompress);
-        resetBtn.addEventListener('click', resetParams);
-        clearBtn.addEventListener('click', clearAllRecord);
-        confirmVipBtn.addEventListener('click', checkVipPwd);
-        batchNormalDownload.addEventListener('click', batchDownloadAll);
+        /**
+         * 文件大小格式化
+         */
+        function getFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const base = 1024;
+            const unit = ['B', 'KB', 'MB', 'GB'];
+            const idx = Math.floor(Math.log(bytes) / Math.log(base));
+            return (bytes / Math.pow(base, idx)).toFixed(2) + ' ' + unit[idx];
+        }
     </script>
 </body>
 </html>
