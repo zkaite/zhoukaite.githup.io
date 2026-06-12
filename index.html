@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片压缩工具 | 免费批量压缩 + 高清会员版</title>
+    <!-- Tailwind CSS v3 CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        free: '#36D399',
+                        vip: '#F59E0B',
+                        danger: '#EF4444',
+                        neutral: '#64748B'
+                    },
+                    fontFamily: {
+                        sans: ['system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            /* 拖拽高亮样式 */
+            .drag-active {
+                @apply border-primary bg-primary/5 border-2;
+            }
+            /* 卡片通用阴影 */
+            .card-shadow {
+                @apply shadow-md hover:shadow-lg transition-all duration-300;
+            }
+            /* 按钮基础样式 */
+            .btn-base {
+                @apply px-4 py-2.5 rounded-lg font-medium transition-all duration-200 active:scale-95 select-none;
+            }
+            /* 禁用样式 */
+            .btn-disabled {
+                @apply opacity-60 cursor-not-allowed active:scale-100;
+            }
+            /* 滑块美化 */
+            input[type="range"] {
+                -webkit-appearance: none;
+            }
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: currentColor;
+                cursor: pointer;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 min-h-screen pb-10">
+    <div class="container mx-auto px-3 sm:px-4 py-6 max-w-5xl">
+        <!-- 页面头部 -->
+        <header class="text-center mb-8">
+            <h1 class="text-[clamp(1.6rem,4vw,2.2rem)] font-bold text-gray-900 mb-2">图片压缩工具</h1>
+            <p class="text-neutral text-sm md:text-base">本地压缩 · 拖拽/批量上传 · 格式可选 · 全设备适配</p>
+        </header>
+
+        <!-- 功能分区标签 -->
+        <div class="flex flex-wrap justify-center gap-3 mb-6">
+            <div class="flex items-center gap-2 bg-free/10 text-free px-3 py-1.5 rounded-full text-sm">
+                <span class="w-2 h-2 bg-free rounded-full"></span>
+                免费区：普通压缩 0.1~0.6（无限制）
+            </div>
+            <div class="flex items-center gap-2 bg-vip/10 text-vip px-3 py-1.5 rounded-full text-sm">
+                <span class="w-2 h-2 bg-vip rounded-full"></span>
+                会员区：高清压缩 + 批量高清下载
+            </div>
+        </div>
+
+        <!-- 上传区域 支持点击+拖拽 -->
+        <div id="uploadBox" class="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8 text-center bg-white card-shadow mb-6 cursor-pointer">
+            <input type="file" id="fileInput" class="hidden" accept="image/*" multiple>
+            <div class="flex flex-col items-center justify-center">
+                <svg class="w-14 h-14 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <p class="text-base font-medium text-gray-700 mb-1">点击或拖拽图片到此上传</p>
+                <p class="text-xs text-gray-500">支持 JPG / PNG / GIF，单图、多图批量上传</p>
+            </div>
+        </div>
+
+        <!-- 压缩参数 & 功能按钮区 -->
+        <div class="bg-white rounded-xl p-4 sm:p-6 card-shadow mb-6">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- 左侧：压缩参数 + 格式选择 -->
+                <div class="space-y-4">
+                    <label class="block text-sm font-medium text-gray-700">压缩设置</label>
+
+                    <!-- 输出格式选择 -->
+                    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-sm font-medium text-gray-700 mb-2">输出格式</p>
+                        <div class="flex gap-3">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" name="imgFormat" value="image/jpeg" checked class="accent-primary">
+                                <span class="text-sm">JPG</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" name="imgFormat" value="image/png" class="accent-primary">
+                                <span class="text-sm">PNG</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 免费普通压缩 -->
+                    <div class="p-4 bg-free/5 rounded-lg border border-free/20">
+                        <p class="text-sm font-medium text-free mb-2">普通压缩（免费）</p>
+                        <input type="range" id="freeRatio" min="0.1" max="0.6" step="0.05" value="0.4" 
+                            class="w-full h-2 bg-gray-200 rounded-lg cursor-pointer accent-free">
+                        <div class="flex justify-between text-xs text-gray-500 mt-2">
+                            <span>压缩率：<span id="freeRatioText" class="font-bold">40%</span></span>
+                            <span>体积更小</span>
+                        </div>
+                    </div>
+
+                    <!-- 会员高清压缩 -->
+                    <div id="vipRatioBox" class="p-4 bg-vip/5 rounded-lg border border-vip/20 relative">
+                        <p class="text-sm font-medium text-vip mb-2">高清压缩（会员专属）</p>
+                        <input type="range" id="vipRatio" min="0.6" max="1.0" step="0.05" value="0.8" 
+                            class="w-full h-2 bg-gray-200 rounded-lg cursor-pointer accent-vip" disabled>
+                        <div class="flex justify-between text-xs text-gray-500 mt-2">
+                            <span>压缩率：<span id="vipRatioText" class="font-bold">80%</span></span>
+                            <span>画质更高</span>
+                        </div>
+                        <!-- 会员锁定遮罩 -->
+                        <div id="vipLockMask" class="absolute inset-0 bg-white/60 backdrop-blur-sm rounded-lg flex items-center justify-center cursor-pointer">
+                            <span class="bg-vip text-white text-xs px-3 py-1 rounded-full">点击解锁会员</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：功能按钮组 -->
+                <div class="flex flex-col justify-end gap-3">
+                    <button id="compressBtn" class="btn-base bg-primary text-white hover:bg-primary/90 w-full">
+                        开始批量压缩
+                    </button>
+                    <!-- 普通批量下载（免费） -->
+                    <button id="batchNormalDownload" class="btn-base bg-gray-600 text-white hover:bg-gray-700 w-full">
+                        批量下载（普通版）
+                    </button>
+                    <!-- 会员批量高清下载 -->
+                    <button id="batchDownloadBtn" class="btn-base bg-vip text-white hover:bg-vip/90 w-full relative">
+                        批量高清下载
+                        <span id="downloadLockIcon" class="absolute right-3 top-1/2 -translate-y-1/2">🔒</span>
+                    </button>
+                    <div class="flex gap-3">
+                        <button id="resetBtn" class="btn-base bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">
+                            重置参数
+                        </button>
+                        <button id="clearBtn" class="btn-base bg-danger/10 text-danger hover:bg-danger/20 flex-1">
+                            清空记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片预览 & 压缩信息列表 -->
+        <div id="previewBox" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 hidden">
+            <!-- 预览项由JS动态生成 -->
+        </div>
+    </div>
+
+    <!-- 会员付费弹窗 -->
+    <div id="vipModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden px-3">
+        <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden card-shadow transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="p-5 border-b border-gray-100">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-900">开通会员 · 解锁高清功能</h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+                </div>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="bg-vip/5 rounded-lg p-4">
+                    <h4 class="font-medium text-vip mb-3">会员专属权益</h4>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li class="flex items-center gap-2">✅ 0.6~1.0 高保真高清压缩</li>
+                        <li class="flex items-center gap-2">✅ 多图一键批量高清下载</li>
+                        <li class="flex items-center gap-2">✅ 全功能无使用次数限制</li>
+                        <li class="flex items-center gap-2">✅ 优先体验工具新版功能</li>
+                    </ul>
+                </div>
+                <!-- 收款码预留区域 -->
+                <div id="payCodeBox" class="w-44 h-44 bg-gray-100 rounded-lg mx-auto flex items-center justify-center text-gray-400 text-sm">
+                    收款码放置区
+                </div>
+            </div>
+            <div class="p-5 bg-gray-50">
+                <button id="confirmVipBtn" class="btn-base bg-vip text-white w-full hover:bg-vip/90">
+                    确认开通会员
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let uploadFiles = [];    // 已上传图片文件列表
+        let compressFiles = [];  // 压缩后图片文件列表
+        const isVip = false;     // 会员状态：默认非会员
+        const MAX_SIZE = 1920;   // 图片最大宽高限制
+
+        // 获取DOM元素
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const previewBox = document.getElementById('previewBox');
+        const freeRatio = document.getElementById('freeRatio');
+        const freeRatioText = document.getElementById('freeRatioText');
+        const vipRatio = document.getElementById('vipRatio');
+        const vipRatioText = document.getElementById('vipRatioText');
+        const vipLockMask = document.getElementById('vipLockMask');
+        const batchDownloadBtn = document.getElementById('batchDownloadBtn');
+        const batchNormalDownload = document.getElementById('batchNormalDownload');
+        const downloadLockIcon = document.getElementById('downloadLockIcon');
+        const compressBtn = document.getElementById('compressBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const vipModal = document.getElementById('vipModal');
+        const modalContent = document.getElementById('modalContent');
+        const closeModal = document.getElementById('closeModal');
+        const confirmVipBtn = document.getElementById('confirmVipBtn');
+        const formatRadios = document.querySelectorAll('input[name="imgFormat"]');
+
+        // ===================== 事件监听 =====================
+        // 点击上传框唤起文件选择
+        uploadBox.addEventListener('click', () => fileInput.click());
+
+        // 选择文件上传
+        fileInput.addEventListener('change', handleFileUpload);
+
+        // 拖拽上传相关事件
+        uploadBox.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadBox.classList.add('drag-active');
+        });
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('drag-active');
+        });
+        uploadBox.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadBox.classList.remove('drag-active');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileUpload(e);
+            }
+        });
+
+        // 压缩比例文字实时更新
+        freeRatio.addEventListener('input', () => {
+            freeRatioText.innerText = Math.round(freeRatio.value * 100) + '%';
+        });
+        vipRatio.addEventListener('input', () => {
+            vipRatioText.innerText = Math.round(vipRatio.value * 100) + '%';
+        });
+
+        // 会员功能弹窗触发
+        vipLockMask.addEventListener('click', openVipModal);
+        batchDownloadBtn.addEventListener('click', () => {
+            if (!isVip) openVipModal();
+        });
+
+        // 关闭弹窗
+        closeModal.addEventListener('click', closeVipModal);
+        vipModal.addEventListener('click', e => {
+            if (e.target === vipModal) closeVipModal();
+        });
+
+        // 功能按钮
+        compressBtn.addEventListener('click', startCompress);
+        resetBtn.addEventListener('click', resetParams);
+        clearBtn.addEventListener('click', clearAllRecord);
+        confirmVipBtn.addEventListener('click', () => alert('会员开通接口预留，可对接支付功能'));
+        // 免费批量下载
+        batchNormalDownload.addEventListener('click', batchDownloadAll);
+
+        // ===================== 核心功能函数 =====================
+        /**
+         * 处理图片上传（点击/拖拽共用）
+         */
+        function handleFileUpload(e) {
+            const files = e.target.files || e.dataTransfer.files;
+            if (!files.length) return;
+
+            const imageList = Array.from(files).filter(file => file.type.startsWith('image/'));
+            if (imageList.length === 0) {
+                alert('请上传图片格式文件！');
+                return;
+            }
+
+            // 去重存入列表
+            imageList.forEach(file => {
+                const exist = uploadFiles.some(item => item.name === file.name && item.size === file.size);
+                if (!exist) uploadFiles.push(file);
+            });
+
+            renderPreview();
+        }
+
+        /**
+         * 渲染图片预览、大小、状态
+         */
+        function renderPreview() {
+            previewBox.classList.remove('hidden');
+            previewBox.innerHTML = '';
+
+            uploadFiles.forEach((file, index) => {
+                const originSize = getFileSize(file.size);
+                const item = document.createElement('div');
+                item.className = 'bg-white rounded-xl p-3 card-shadow';
+                item.innerHTML = `
+                    <div class="aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
+                        <img src="${URL.createObjectURL(file)}" class="w-full h-full object-contain" alt="预览图">
+                    </div>
+                    <p class="text-sm font-medium text-gray-800 truncate" title="${file.name}">${file.name}</p>
+                    <div class="text-xs text-gray-500 mt-1 space-y-1">
+                        <p>原始大小：<span class="font-medium">${originSize}</span></p>
+                        <p id="compressInfo${index}">压缩状态：待压缩</p>
+                    </div>
+                    <div class="mt-2 hidden" id="downloadBtn${index}">
+                        <a href="javascript:;" class="download-btn block w-full text-center text-xs bg-primary/10 text-primary py-2 rounded-lg hover:bg-primary/20" data-index="${index}">
+                            单张下载
+                        </a>
+                    </div>
+                `;
+                previewBox.appendChild(item);
+            });
+
+            // 绑定单张下载事件
+            document.querySelectorAll('.download-btn').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    downloadSingle(e.target.dataset.index);
+                });
+            });
+        }
+
+        /**
+         * 批量开始压缩（免费档位）
+         */
+        async function startCompress() {
+            if (uploadFiles.length === 0) {
+                alert('请先上传图片！');
+                return;
+            }
+            compressFiles = [];
+            const quality = parseFloat(freeRatio.value);
+            // 获取选中的输出格式
+            let outputType = 'image/jpeg';
+            formatRadios.forEach(radio => {
+                if (radio.checked) outputType = radio.value;
+            });
+
+            for (let i = 0; i < uploadFiles.length; i++) {
+                const file = uploadFiles[i];
+                const compressed = await compressImage(file, quality, outputType);
+                compressFiles.push(compressed);
+
+                const afterSize = getFileSize(compressed.size);
+                const reduceRate = ((file.size - compressed.size) / file.size * 100).toFixed(1);
+                const infoDom = document.getElementById(`compressInfo${i}`);
+
+                if (compressed.size > file.size) {
+                    infoDom.innerHTML = `
+                        压缩后：<span class="text-neutral">${afterSize}</span>
+                        <br>压缩率：<span class="text-danger">${reduceRate}%（体积变大，已保留原图）</span>
+                    `;
+                } else {
+                    infoDom.innerHTML = `
+                        压缩后：<span class="text-free">${afterSize}</span>
+                        <br>压缩率：<span class="text-primary">${reduceRate}%</span>
+                    `;
+                }
+                document.getElementById(`downloadBtn${i}`).classList.remove('hidden');
+            }
+        }
+
+        /**
+         * 图片压缩核心方法（修复反向压缩 + 格式自定义 + 尺寸限制）
+         * @param {File} file 原文件
+         * @param {Number} quality 压缩质量
+         * @param {String} outType 输出mime类型
+         * @returns {Promise<File>}
+         */
+        function compressImage(file, quality, outType) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        // 等比例限制最大尺寸
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > MAX_SIZE || h > MAX_SIZE) {
+                            const scale = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+                            w = Math.round(w * scale);
+                            h = Math.round(h * scale);
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = w;
+                        canvas.height = h;
+
+                        // 透明区域填充白色
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        canvas.toBlob(blob => {
+                            const newFile = new File([blob], file.name, { type: outType });
+                            // 压缩后体积更大则返回原图
+                            resolve(newFile.size > file.size ? file : newFile);
+                        }, outType, quality);
+                    };
+                };
+            });
+        }
+
+        /**
+         * 单张图片下载
+         */
+        function downloadSingle(index) {
+            const file = compressFiles[index];
+            if (!file) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(file);
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        /**
+         * 批量下载所有压缩图片（免费通用版）
+         * 注：浏览器原生不支持直接打包zip，依次逐个下载
+         */
+        function batchDownloadAll() {
+            if (compressFiles.length === 0) {
+                alert('请先完成图片压缩！');
+                return;
+            }
+            compressFiles.forEach((file, idx) => {
+                setTimeout(() => downloadSingle(idx), idx * 200);
+            });
+        }
+
+        /**
+         * 重置参数
+         */
+        function resetParams() {
+            freeRatio.value = 0.4;
+            freeRatioText.innerText = '40%';
+            vipRatio.value = 0.8;
+            vipRatioText.innerText = '80%';
+            // 默认选中JPG
+            formatRadios[0].checked = true;
+        }
+
+        /**
+         * 清空所有记录
+         */
+        function clearAllRecord() {
+            uploadFiles = [];
+            compressFiles = [];
+            previewBox.innerHTML = '';
+            previewBox.classList.add('hidden');
+            fileInput.value = '';
+        }
+
+        /**
+         * 打开会员弹窗
+         */
+        function openVipModal() {
+            vipModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        /**
+         * 关闭会员弹窗
+         */
+        function closeVipModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                vipModal.classList.add('hidden');
+            }, 300);
+        }
+
+        /**
+         * 文件大小格式化
+         */
+        function getFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const base = 1024;
+            const unit = ['B', 'KB', 'MB', 'GB'];
+            const idx = Math.floor(Math.log(bytes) / Math.log(base));
+            return (bytes / Math.pow(base, idx)).toFixed(2) + ' ' + unit[idx];
+        }
+    </script>
+</body>
+</html>
