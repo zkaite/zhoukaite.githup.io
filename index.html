@@ -193,17 +193,17 @@
                         <li class="flex items-center gap-2">✅ 优先体验工具新版功能</li>
                     </ul>
                 </div>
-                <!-- 收款码预留区域 -->
-                <div id="payCodeBox" class="w-44 h-44 bg-gray-100 rounded-lg mx-auto flex items-center justify-center text-gray-400 text-sm">
-                    <!-- 弹窗内部：收款区域 -->
+                <!-- 收款码 + 密码输入区域 -->
+                <div id="payCodeBox" class="w-full rounded-lg mx-auto text-center">
                     <div class="p-4 text-center">
                       <p class="mb-3 text-lg font-bold">解锁高清压缩 一次性付费 9.99元</p>
                       <p class="text-sm text-gray-500 mb-4">扫码付款后联系我获取解锁密码</p>
-                      <!-- 收款码图片 -->
-                      <img src="pay.jpg" class="w-48 h-48 mx-auto">
-                      <div class="mt-4">
-                        <button class="px-4 py-2 bg-gray-200 rounded" onclick="closeModal()">关闭</button>
-                      </div>
+                      <!-- 收款码图片，替换为你的二维码地址 -->
+                      <img src="pay.jpg" class="w-48 h-48 mx-auto mb-4">
+                      <!-- 密码输入框 -->
+                      <input id="vipPwd" type="text" placeholder="请输入解锁密码" 
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 outline-none focus:border-primary">
+                      <button class="px-4 py-2 bg-gray-200 rounded" onclick="closeModal()">关闭</button>
                     </div>
                 </div>
             </div>
@@ -219,8 +219,9 @@
         // 全局变量
         let uploadFiles = [];    // 已上传图片文件列表
         let compressFiles = [];  // 压缩后图片文件列表
-        const isVip = false;     // 会员状态：默认非会员
+        let isVip = false;       // 会员状态：默认非会员
         const MAX_SIZE = 1920;   // 图片最大宽高限制
+        const VIP_PASSWORD = "123456"; // 解锁密码，自行修改
 
         // 获取DOM元素
         const uploadBox = document.getElementById('uploadBox');
@@ -242,6 +243,17 @@
         const closeModal = document.getElementById('closeModal');
         const confirmVipBtn = document.getElementById('confirmVipBtn');
         const formatRadios = document.querySelectorAll('input[name="imgFormat"]');
+        const vipPwd = document.getElementById('vipPwd');
+
+        // 全局声明关闭弹窗函数
+        function closeModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                vipModal.classList.add('hidden');
+                vipPwd.value = ''; // 清空密码框
+            }, 300);
+        }
 
         // ===================== 事件监听 =====================
         // 点击上传框唤起文件选择
@@ -281,21 +293,56 @@
             if (!isVip) openVipModal();
         });
 
-        // 关闭弹窗
-        closeModal.addEventListener('click', closeVipModal);
+        // 关闭弹窗按钮
+        closeModal.addEventListener('click', closeModal);
         vipModal.addEventListener('click', e => {
-            if (e.target === vipModal) closeVipModal();
+            if (e.target === vipModal) closeModal();
         });
 
         // 功能按钮
         compressBtn.addEventListener('click', startCompress);
         resetBtn.addEventListener('click', resetParams);
         clearBtn.addEventListener('click', clearAllRecord);
-        confirmVipBtn.addEventListener('click', () => alert('会员开通接口预留，可对接支付功能'));
+        // 确认解锁会员
+        confirmVipBtn.addEventListener('click', checkVipPwd);
         // 免费批量下载
         batchNormalDownload.addEventListener('click', batchDownloadAll);
 
         // ===================== 核心功能函数 =====================
+        /**
+         * 打开会员弹窗
+         */
+        function openVipModal() {
+            vipModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        /**
+         * 校验会员密码，解锁会员功能
+         */
+        function checkVipPwd() {
+            const pwd = vipPwd.value.trim();
+            if (!pwd) {
+                alert('请输入解锁密码！');
+                return;
+            }
+            if (pwd !== VIP_PASSWORD) {
+                alert('密码错误，请重新输入！');
+                vipPwd.value = '';
+                return;
+            }
+            // 解锁成功
+            isVip = true;
+            vipRatio.disabled = false;
+            vipLockMask.style.display = 'none';
+            downloadLockIcon.style.display = 'none';
+            closeModal();
+            alert('会员解锁成功！已启用高清压缩与批量高清下载功能');
+        }
+
         /**
          * 处理图片上传（点击/拖拽共用）
          */
@@ -356,7 +403,7 @@
         }
 
         /**
-         * 批量开始压缩（免费档位）
+         * 批量开始压缩（区分免费/会员档位）
          */
         async function startCompress() {
             if (uploadFiles.length === 0) {
@@ -364,7 +411,8 @@
                 return;
             }
             compressFiles = [];
-            const quality = parseFloat(freeRatio.value);
+            // 根据会员状态选择压缩质量
+            const quality = isVip ? parseFloat(vipRatio.value) : parseFloat(freeRatio.value);
             // 获取选中的输出格式
             let outputType = 'image/jpeg';
             formatRadios.forEach(radio => {
@@ -455,7 +503,6 @@
 
         /**
          * 批量下载所有压缩图片（免费通用版）
-         * 注：浏览器原生不支持直接打包zip，依次逐个下载
          */
         function batchDownloadAll() {
             if (compressFiles.length === 0) {
@@ -491,28 +538,6 @@
         }
 
         /**
-         * 打开会员弹窗
-         */
-        function openVipModal() {
-            vipModal.classList.remove('hidden');
-            setTimeout(() => {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
-            }, 10);
-        }
-
-        /**
-         * 关闭会员弹窗
-         */
-        function closeVipModal() {
-            modalContent.classList.remove('scale-100', 'opacity-100');
-            modalContent.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                vipModal.classList.add('hidden');
-            }, 300);
-        }
-
-        /**
          * 文件大小格式化
          */
         function getFileSize(bytes) {
@@ -522,9 +547,6 @@
             const idx = Math.floor(Math.log(bytes) / Math.log(base));
             return (bytes / Math.pow(base, idx)).toFixed(2) + ' ' + unit[idx];
         }
-
-        // 控制弹窗
-    
     </script>
 </body>
 </html>
