@@ -191,19 +191,16 @@
                         <li class="flex items-center gap-2">✅ 多图一键批量高清下载</li>
                         <li class="flex items-center gap-2">✅ 全功能无使用次数限制</li>
                         <li class="flex items-center gap-2">✅ 优先体验工具新版功能</li>
+                        <li class="flex items-center gap-2">✅ 解锁高清压缩 一次性付费 9.99元</li>
                     </ul>
                 </div>
                 <!-- 收款码 + 密码输入区域 -->
                 <div id="payCodeBox" class="w-full rounded-lg mx-auto text-center">
                     <div class="p-4 text-center">
-                      <p class="mb-3 text-lg font-bold">解锁高清压缩 一次性付费 9.99元</p>
-                      <p class="text-sm text-gray-500 mb-4">扫码付款后联系我获取解锁密码</p>
-                      <!-- 收款码图片，替换为你的二维码地址 -->
-                      <img src="pay.jpg" class="w-48 h-48 mx-auto mb-4">
-                      <!-- 密码输入框 -->
-                      <input id="vipPwd" type="text" placeholder="请输入解锁密码" 
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 outline-none focus:border-primary">
-                      <button class="px-4 py-2 bg-gray-200 rounded" onclick="closeModal()">关闭</button>
+                        <!-- 收款码图片，替换为你的二维码地址 -->
+                        <img src="pay.jpg" class="w-48 h-48 mx-auto mb-4">
+                        <!-- 密码输入框 -->
+                        <input id="vipPwd" type="text" placeholder="请输入解锁密码" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 outline-none focus:border-primary">
                     </div>
                 </div>
             </div>
@@ -290,13 +287,22 @@
         // 会员功能弹窗触发
         vipLockMask.addEventListener('click', openVipModal);
         batchDownloadBtn.addEventListener('click', () => {
-            if (!isVip) openVipModal();
+            if (!isVip) {
+                openVipModal();
+            } else {
+                batchHDownloadAll();
+            }
         });
 
         // 关闭弹窗按钮
         closeModal.addEventListener('click', closeModal);
         vipModal.addEventListener('click', e => {
             if (e.target === vipModal) closeModal();
+        });
+
+        // 密码框回车快捷提交
+        vipPwd.addEventListener('keydown', e => {
+            if(e.key === 'Enter') checkVipPwd();
         });
 
         // 功能按钮
@@ -317,6 +323,7 @@
             setTimeout(() => {
                 modalContent.classList.remove('scale-95', 'opacity-0');
                 modalContent.classList.add('scale-100', 'opacity-100');
+                vipPwd.focus(); // 自动聚焦密码输入框
             }, 10);
         }
 
@@ -332,6 +339,7 @@
             if (pwd !== VIP_PASSWORD) {
                 alert('密码错误，请重新输入！');
                 vipPwd.value = '';
+                vipPwd.focus();
                 return;
             }
             // 解锁成功
@@ -478,7 +486,9 @@
                         ctx.drawImage(img, 0, 0, w, h);
 
                         canvas.toBlob(blob => {
-                            const newFile = new File([blob], file.name, { type: outType });
+                            // 高清文件重命名加标识
+                            let newName = isVip ? `高清_${file.name}` : file.name;
+                            const newFile = new File([blob], newName, { type: outType });
                             // 压缩后体积更大则返回原图
                             resolve(newFile.size > file.size ? file : newFile);
                         }, outType, quality);
@@ -502,9 +512,22 @@
         }
 
         /**
-         * 批量下载所有压缩图片（免费通用版）
+         * 普通批量下载（免费版）
          */
         function batchDownloadAll() {
+            if (compressFiles.length === 0) {
+                alert('请先完成图片压缩！');
+                return;
+            }
+            compressFiles.forEach((file, idx) => {
+                setTimeout(() => downloadSingle(idx), idx * 200);
+            });
+        }
+
+        /**
+         * 高清批量下载（会员专属）
+         */
+        function batchHDownloadAll() {
             if (compressFiles.length === 0) {
                 alert('请先完成图片压缩！');
                 return;
