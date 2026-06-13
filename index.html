@@ -174,7 +174,7 @@
         </div>
     </div>
 
-    <!-- 会员付费弹窗 -->
+    <!-- 会员付费弹窗（已添加联系方式+备注码+解锁输入框） -->
     <div id="vipModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden px-3">
         <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden card-shadow transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
             <div class="p-5 border-b border-gray-100">
@@ -193,14 +193,37 @@
                         <li class="flex items-center gap-2">✅ 优先体验工具新版功能</li>
                     </ul>
                 </div>
-                <!-- 收款码预留区域 -->
+
+                <!-- 随机付款备注码 -->
+                <div class="text-center">
+                    <p class="text-sm text-gray-600 mb-2">扫码付款，<strong>付款备注填写下方编码</strong></p>
+                    <div class="bg-gray-100 rounded px-4 py-2 inline-block mb-3">
+                        <span class="text-xl font-bold text-vip" id="payRandCode">------</span>
+                    </div>
+                </div>
+
+                <!-- 收款码 -->
                 <div id="payCodeBox" class="w-44 h-44 bg-gray-100 rounded-lg mx-auto flex items-center justify-center text-gray-400 text-sm">
                     <img src="pay.jpg" class="w-48 h-48 mx-auto mb-4" alt="收款码">
+                </div>
+
+                <!-- 联系微信 -->
+                <div class="text-center text-sm text-gray-600">
+                    <p>付款完成后，请添加微信领取解锁码</p>
+                    <p class="font-medium text-vip mt-1">微信号：你的微信ID</p>
+                </div>
+
+                <!-- 解锁码输入框 -->
+                <div class="mt-4">
+                    <label class="block text-sm text-gray-600 mb-1 text-center">输入解锁码激活会员</label>
+                    <input id="activeCode" type="text" placeholder="请输入解锁码" 
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-vip">
+                    <p id="tipText" class="text-xs mt-2 text-center hidden"></p>
                 </div>
             </div>
             <div class="p-5 bg-gray-50">
                 <button id="confirmVipBtn" class="btn-base bg-vip text-white w-full hover:bg-vip/90">
-                    确认开通会员
+                    立即激活
                 </button>
             </div>
         </div>
@@ -210,8 +233,11 @@
         // 全局变量
         let uploadFiles = [];    // 已上传图片文件列表
         let compressFiles = [];  // 压缩后图片文件列表
-        const isVip = false;     // 会员状态：默认非会员
+        let isVip = false;       // 会员状态
         const MAX_SIZE = 1920;   // 图片最大宽高限制
+        const ACTIVE_KEY = "imgCompressVip"; // 本地存储键名
+        // 自定义有效解锁码，可自行增删
+        const VALID_CODES = ["VIP666", "VIP888", "TOOL999"];
 
         // 获取DOM元素
         const uploadBox = document.getElementById('uploadBox');
@@ -233,6 +259,37 @@
         const closeModal = document.getElementById('closeModal');
         const confirmVipBtn = document.getElementById('confirmVipBtn');
         const formatRadios = document.querySelectorAll('input[name="imgFormat"]');
+        const activeCode = document.getElementById('activeCode');
+        const tipText = document.getElementById('tipText');
+        const payRandCode = document.getElementById('payRandCode');
+
+        // 页面初始化：读取本地会员状态 + 生成随机备注码
+        window.onload = function(){
+            const localVip = localStorage.getItem(ACTIVE_KEY);
+            if(localVip === "1"){
+                unlockVip();
+            }
+            createRandCode();
+        }
+
+        // 生成6位随机备注编码
+        function createRandCode(){
+            const str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let code = "";
+            for(let i = 0; i < 6; i++){
+                code += str[Math.floor(Math.random() * str.length)];
+            }
+            payRandCode.innerText = code;
+        }
+
+        // 解锁会员功能
+        function unlockVip(){
+            isVip = true;
+            vipRatio.disabled = false;
+            vipLockMask.style.display = "none";
+            downloadLockIcon.style.display = "none";
+            localStorage.setItem(ACTIVE_KEY, "1");
+        }
 
         // ===================== 事件监听 =====================
         // 点击上传框唤起文件选择
@@ -282,7 +339,29 @@
         compressBtn.addEventListener('click', startCompress);
         resetBtn.addEventListener('click', resetParams);
         clearBtn.addEventListener('click', clearAllRecord);
-        confirmVipBtn.addEventListener('click', () => alert('会员开通接口预留，可对接支付功能'));
+
+        // 解锁激活按钮
+        confirmVipBtn.addEventListener('click', () => {
+            const inputVal = activeCode.value.trim();
+            if(!inputVal){
+                tipText.innerText = "请输入解锁码";
+                tipText.className = "text-xs mt-2 text-center text-danger";
+                tipText.classList.remove("hidden");
+                return;
+            }
+            if(VALID_CODES.includes(inputVal)){
+                unlockVip();
+                tipText.innerText = "✅ 激活成功，会员功能已解锁！";
+                tipText.className = "text-xs mt-2 text-center text-free";
+                tipText.classList.remove("hidden");
+                setTimeout(closeVipModal, 1200);
+            }else{
+                tipText.innerText = "❌ 解锁码错误，请核对";
+                tipText.className = "text-xs mt-2 text-center text-danger";
+                tipText.classList.remove("hidden");
+            }
+        });
+
         // 免费批量下载
         batchNormalDownload.addEventListener('click', batchDownloadAll);
 
@@ -485,11 +564,18 @@
          * 打开会员弹窗
          */
         function openVipModal() {
+            if(isVip){
+                alert("您已是会员，功能已全部解锁！");
+                return;
+            }
             vipModal.classList.remove('hidden');
             setTimeout(() => {
                 modalContent.classList.remove('scale-95', 'opacity-0');
                 modalContent.classList.add('scale-100', 'opacity-100');
             }, 10);
+            // 重置输入框与提示
+            activeCode.value = "";
+            tipText.classList.add("hidden");
         }
 
         /**
